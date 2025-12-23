@@ -8,14 +8,16 @@ Requires the following files:
     -pr: the bonded parameters derived elsewere. The fragment can be larger than the 
          residue to assign paramters, but the atom naming must be unique
     -p : the full itp where the new fragment is added
-The new topology is written to stdout. 
 The resieud to be updated is designed with -nres
+The new topology is written to stdout # TDBfile specified by -o
+The topology for inflation strategy is written instead, with the -infl flag
 '''
 
 import sys
 import re
 import numpy as np
 import datetime
+verbose=0
 
 # Version tag (here comes the version tag)
 #
@@ -166,6 +168,8 @@ def get_args():
     final_arguments["-pt"]="template.itp"
     final_arguments["-pr"]="params.itp"
     final_arguments["-p"]="topol.top"
+    final_arguments["-o"]="top_out.top"
+    final_arguments["-infl"]=False
     final_arguments["-s"]="none"
     final_arguments["-res"]=1
     final_arguments["-h"]=False
@@ -173,7 +177,9 @@ def get_args():
     arg_description = dict()
     arg_description["-pt"] ="Name of the template topology"
     arg_description["-pr"] ="Name of the topology with parameters"
-    arg_description["-p"] ="Name of the topologyto be updated"
+    arg_description["-p"] ="Name of the topology to be updated"
+    arg_description["-o"] ="Name of output topology"
+    arg_description["-infl"] ="Generate topology for inflate"
     arg_description["-s"] ="Swapp file (if not equal none)"
     arg_description["-res"] ="Number of residue to update"
     arg_description["-h"] ="Show this help"
@@ -182,6 +188,8 @@ def get_args():
     arg_type["-pt"] ="char"
     arg_type["-pr"] ="char"
     arg_type["-p"] ="char"
+    arg_type["-o"] ="char"
+    arg_type["infl"] ="bool"
     arg_type["-s"] ="char"
     arg_type["-res"] ="int"
     arg_type["-h"]    ="-"
@@ -373,6 +381,10 @@ if __name__ == '__main__':
     topfile = args.get('-pt')
     atoms_template,params = read_top(topfile)
 
+    # Output files
+    outtop = args.get('-o')
+    inflate_top = args.get('-infl')
+
     templatetop_dict = {}
     templatetop_core = []
     templatetop_env  = []
@@ -392,22 +404,32 @@ if __name__ == '__main__':
     bonds_par = []
     for bond in params[0]:
         check = [ paramstop_dict[i].atname in templatetop_core for i in [ bond.i1, bond.i2 ] ]
+        if all(check) and inflate_top:
+            bond.ft = 5
+            bond.prms = '; '
         if any(check):
             bonds_par.append(bond)
     pairs_par = []
     for pair in params[1]:
         check = [ paramstop_dict[i].atname in templatetop_core for i in [ pair.i1, pair.i2 ] ]
-        if any(check):
+        if all(check) and inflate_top:
+            continue
+        elif any(check):
             pairs_par.append(pair)
     angles_par = []
     for angle in params[2]:
         check = [ paramstop_dict[i].atname in templatetop_core for i in [ angle.i1, angle.i2, angle.i3 ] ]
-        if any(check):
+        if all(check) and inflate_top:
+            continue
+        elif any(check):
             angles_par.append(angle)
     diheds_par = []
     for dihed in params[3]:
         check = [ paramstop_dict[i].atname in templatetop_core for i in [ dihed.i1, dihed.i2, dihed.i3, dihed.i4 ] ]
-        if any(check):
+        # If inflate, do not add if we have 3 or 4 elements from core
+        if sum(check)>2 and inflate_top:
+            continue
+        elif any(check):
             diheds_par.append(dihed)
 
     # Full topology to update
@@ -477,6 +499,7 @@ if __name__ == '__main__':
         atom.iat = iat
         atoms_upd.append(atom)
 
+
     # Print
     print('[ atoms ]')
     ires = 0
@@ -491,7 +514,8 @@ if __name__ == '__main__':
     for bond in params[0]:
         check = [ iat in iat_rm for iat in [ bond.i1, bond.i2 ] ]
         if any(check):
-            print(';', bond.entryline())
+            if verbose>2:
+                print(';', bond.entryline())
         else:
             bond.i1 = atom_mapping[bond.i1]
             bond.i2 = atom_mapping[bond.i2]
@@ -507,7 +531,8 @@ if __name__ == '__main__':
     for pair in params[1]:
         check = [ iat in iat_rm for iat in [ pair.i1, pair.i2 ] ]
         if any(check):
-            print(';', pair.entryline())
+            if verbose>2:
+                print(';', pair.entryline())
         else:
             pair.i1 = atom_mapping[pair.i1]
             pair.i2 = atom_mapping[pair.i2]
@@ -523,7 +548,8 @@ if __name__ == '__main__':
     for angle in params[2]:
         check = [ iat in iat_rm for iat in [ angle.i1, angle.i2, angle.i3 ] ]
         if any(check):
-            print(';', angle.entryline())
+            if verbose>2:
+                print(';', angle.entryline())
         else:
             angle.i1 = atom_mapping[angle.i1]
             angle.i2 = atom_mapping[angle.i2]
@@ -541,7 +567,8 @@ if __name__ == '__main__':
     for dihed in params[3]:
         check = [ iat in iat_rm for iat in [ dihed.i1, dihed.i2, dihed.i3, dihed.i4 ] ]
         if any(check):
-            print(';', dihed.entryline())
+            if verbose>2:
+                print(';', dihed.entryline())
         else:
             dihed.i1 = atom_mapping[dihed.i1]
             dihed.i2 = atom_mapping[dihed.i2]
@@ -556,5 +583,25 @@ if __name__ == '__main__':
         dihed.i4 = iatpar_to_iatupd[dihed.i4]
         print(dihed.entryline())
     print('')
+
+    # For inflate: 
+    if inflate_top:
+        # 1. Get list of atoms in core
+        iat_core = []
+        for atom in atoms_upd:
+            if atom.ires == targetres and atom.atname in templatetop_core:
+                iat_core.append(atom.iat)
+        # 2. Generate exclusions
+        print('[ exclusions ]')
+        for i in range(len(iat_core)):
+            for j in range(i):
+                print(iat_core[i],iat_core[j])
+        print('')
+        # 3. Generate posres
+        print('[ position_restraints ]')
+        print('; atom  type      fx      fy      fz')
+        for iat in iat_core:
+            print(f' {iat:<5}   1    100000   100000   100000')
+        print('')
 
 
