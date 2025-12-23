@@ -1,0 +1,15 @@
+# Generamos la estructura inicial y la topología a mano
+cp 2f8u_G18-cbz_Ori1.pdb Quad-CbzG18-ori1_init.pdb
+cp topol0.top topol.top
+
+# Solvatacion...
+## With docedahedron
+gmx_d editconf -f Quad-CbzG18-ori1_init.pdb -o Quad-CbzG18-ori1_doceca.gro -d 2.0 -bt dodecahedron 
+gmx_d solvate -cp Quad-CbzG18-ori1_doceca.gro -cs -o Quad-CbzG18-ori1_dodeca_solv.gro -p topol.top # 13785
+
+# Ionize
+touch null.mdp
+gmx_d grompp -f null.mdp -p topol.top -c Quad-CbzG18-ori1_dodeca_solv.gro -o ionize.tpr -maxwarn 1
+echo "SOL" | gmx_d genion -s ionize.tpr -np 22 -o Quad-CbzG18-ori1_dodeca_solvion.gro -p topol.top  
+
+

@@ -1,0 +1,15 @@
+ORI=1
+# Input ABC_newres.pdb and ABC_raw.pdb
+# with BC atoms are reversed in Ori2 wrt Ori1 in ABC_newres.pdb
+
+# Get rotation to the right orientation (using three atoms)
+rmsd_fit -f ABC_newres.pdb -r ABC_raw.pdb -ow | grep "Rotation matrix" -A6 > tmp
+head -n4 tmp | tail -n3 > Rot.dat
+fchk2gro -f cbz_.pdb -o cbz_ori${ORI}_rot.pdb -rot Rot.dat -ow
+
+# Get translation to the linkig point (vector between first atom = linking atom)
+head -n2 cbz_ori${ORI}_rot.pdb > A_newres.pdb
+head -n1 ABC_raw.pdb > A_raw.pdb
+rmsd_fit -f A_newres.pdb -r A_raw.pdb -ow | grep "Rotation matrix" -A6 > tmp
+tail -n1 tmp > Tr.dat
+fchk2gro -f cbz_ori${ORI}_rot.pdb -o cbz_ori${ORI}.pdb -tr Tr.dat -ow

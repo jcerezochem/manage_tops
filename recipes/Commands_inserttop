@@ -1,0 +1,2 @@
+python ./insert_top.py -pt cbz_template.itp -pr cbz_sugar.acpype/cbz_sugar_GMX.itp -p quad.itp -res 8 > quad_G8-cbz.tmp
+cat header quad_G8-cbz.tmp > quad_G8-cbz.itp
