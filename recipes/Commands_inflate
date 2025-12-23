@@ -1,0 +1,27 @@
+# Scaleing factors:
+#  Deflate: 0.4
+#  Inflate: 1.35720880829745, 1.35720880829745, 1.35720880829745
+
+# Iter 0 (deflate)
+python ./inflate.py Quad-CbzG8-ori2_dodeca_solvion.gro 8 0.4 Quad-CbzG8-ori2_dodeca_deflate.gro
+gmx_d grompp -f minim.mdp -p topol_inflate.top -c Quad-CbzG8-ori2_dodeca_deflate.gro -r Quad-CbzG8-ori2_dodeca_deflate.gro -o Quad-CbzG8-ori2_dodeca_deflate_min
+gmx_d mdrun -deffnm Quad-CbzG8-ori2_dodeca_deflate_min
+
+# Iter 1
+python ./inflate.py Quad-CbzG8-ori2_dodeca_deflate_min.gro 8 1.35720880829745 Quad-CbzG8-ori2_dodeca_inflate1.gro
+gmx_d grompp -f minim.mdp -p topol_inflate.top -c Quad-CbzG8-ori2_dodeca_inflate1.gro -r Quad-CbzG8-ori2_dodeca_inflate1.gro -o Quad-CbzG8-ori2_dodeca_inflate1_min
+gmx_d mdrun -deffnm Quad-CbzG8-ori2_dodeca_inflate1_min
+
+# Iter 2
+python ./inflate.py Quad-CbzG8-ori2_dodeca_inflate1_min.gro 8 1.35720880829745 Quad-CbzG8-ori2_dodeca_inflate2.gro
+gmx_d grompp -f minim.mdp -p topol_inflate.top -c Quad-CbzG8-ori2_dodeca_inflate2.gro -r Quad-CbzG8-ori2_dodeca_inflate2.gro -o Quad-CbzG8-ori2_dodeca_inflate2_min
+gmx_d mdrun -deffnm Quad-CbzG8-ori2_dodeca_inflate2_min
+
+# Iter 3
+python ./inflate.py Quad-CbzG8-ori2_dodeca_inflate2_min.gro 8 1.35720880829745 Quad-CbzG8-ori2_dodeca_inflate3.gro
+gmx_d grompp -f minim.mdp -p topol_inflate.top -c Quad-CbzG8-ori2_dodeca_inflate3.gro -r Quad-CbzG8-ori2_dodeca_inflate3.gro -o Quad-CbzG8-ori2_dodeca_inflate3_min
+gmx_d mdrun -deffnm Quad-CbzG8-ori2_dodeca_inflate3_min
+
+# Relax
+gmx_d grompp -f minim.mdp -p topol.top -c Quad-CbzG8-ori2_dodeca_inflate3_min.gro -o Quad-CbzG8-ori2_dodeca_min
+gmx_d mdrun -deffnm Quad-CbzG8-ori2_dodeca_min
